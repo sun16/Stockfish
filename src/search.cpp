@@ -860,6 +860,9 @@ namespace {
 #ifdef HORDE
     if (pos.is_horde()) {} else
 #endif
+#ifdef HELPMATE
+    if (pos.is_helpmate()) {} else
+#endif
     if (!rootNode && TB::Cardinality)
     {
         int piecesCount = pos.count<ALL_PIECES>();
@@ -922,12 +925,13 @@ namespace {
         tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
                   ss->staticEval, TT.generation());
     }
+
 #ifdef ANTI
     if (pos.is_anti() && pos.can_capture())
         goto moves_loop;
 #endif
-#ifdef LOSERS
-    if (pos.is_losers() && pos.can_capture_losers())
+#ifdef HELPMATE
+    if (pos.is_helpmate())
         goto moves_loop;
 #endif
 
@@ -1025,6 +1029,12 @@ namespace {
     // much above beta, we can (almost) safely prune the previous move.
 #ifdef ANTI
     if (pos.is_anti()) {} else
+#endif
+#ifdef LOSERS
+    if (pos.is_losers()) {} else
+#endif
+#ifdef HELPMATE
+    if (pos.is_helpmate()) {} else
 #endif
     if (   !PvNode
         &&  depth >= 5 * ONE_PLY
@@ -1452,6 +1462,10 @@ moves_loop: // When in check search starts from here
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
+#ifdef HELPMATE
+    if (pos.is_helpmate())
+        return -bestValue;
+#endif
     return bestValue;
   }
 
