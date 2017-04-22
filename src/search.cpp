@@ -590,6 +590,9 @@ void Thread::search() {
           while (true)
           {
               bestValue = ::search<PV>(rootPos, ss, alpha, beta, rootDepth, false, false);
+#ifdef HELPMATE
+              if (rootPos.is_helpmate()) bestValue = -bestValue;
+#endif
 
               // Bring the best move to the front. It is critical that sorting
               // is done with a stable algorithm because all the values but the
@@ -1137,6 +1140,9 @@ moves_loop: // When in check search starts from here
 #ifdef GRID
                   && !pos.is_grid()
 #endif
+#ifdef HELPMATE
+                  && !pos.is_helpmate()
+#endif
                   ? pos.check_squares(type_of(movedPiece)) & to_sq(move)
                   : pos.gives_check(move);
 
@@ -1158,6 +1164,9 @@ moves_loop: // When in check search starts from here
           Depth d = (depth / (2 * ONE_PLY)) * ONE_PLY;
           ss->excludedMove = move;
           value = search<NonPV>(pos, ss, rBeta - 1, rBeta, d, cutNode, true);
+#ifdef HELPMATE
+          if (pos.is_helpmate()) value = -value;
+#endif
           ss->excludedMove = MOVE_NONE;
 
           if (value < rBeta)
@@ -1195,6 +1204,9 @@ moves_loop: // When in check search starts from here
 #ifdef LOSERS
               && (!pos.is_losers() || !(pos.attackers_to(to_sq(move)) & pos.pieces(~pos.side_to_move())))
 #endif
+#ifdef HELPMATE
+              && !pos.is_helpmate()
+#endif
 #ifdef HORDE
               && (pos.is_horde() || !pos.advanced_pawn_push(move) || pos.non_pawn_material() >= Value(5000))
 #else
@@ -1227,6 +1239,12 @@ moves_loop: // When in check search starts from here
               // Prune moves with negative SEE
 #ifdef ANTI
               if (pos.is_anti()) {} else
+#endif
+#ifdef HELPMATE
+              if (pos.is_helpmate()) {} else
+#endif
+#ifdef RACE
+              if (pos.is_race()) {} else
 #endif
               if (   lmrDepth < 8
                   && !pos.see_ge(move, Value(-35 * lmrDepth * lmrDepth)))
@@ -1318,6 +1336,9 @@ moves_loop: // When in check search starts from here
           Depth d = std::max(newDepth - r, ONE_PLY);
 
           value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, true, false);
+#ifdef HELPMATE
+          if (pos.is_helpmate()) value = -value;
+#endif
 
           doFullDepthSearch = (value > alpha && d != newDepth);
       }
@@ -1326,10 +1347,15 @@ moves_loop: // When in check search starts from here
 
       // Step 16. Full depth search when LMR is skipped or fails high
       if (doFullDepthSearch)
+      {
           value = newDepth <   ONE_PLY ?
                             givesCheck ? -qsearch<NonPV,  true>(pos, ss+1, -(alpha+1), -alpha)
                                        : -qsearch<NonPV, false>(pos, ss+1, -(alpha+1), -alpha)
                                        : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, !cutNode, false);
+#ifdef HELPMATE
+          if (pos.is_helpmate()) value = -value;
+#endif
+      }
 
       // For PV nodes only, do a full PV search on the first move or after a fail
       // high (in the latter case search only if value < beta), otherwise let the
@@ -1343,6 +1369,9 @@ moves_loop: // When in check search starts from here
                             givesCheck ? -qsearch<PV,  true>(pos, ss+1, -beta, -alpha)
                                        : -qsearch<PV, false>(pos, ss+1, -beta, -alpha)
                                        : - search<PV>(pos, ss+1, -beta, -alpha, newDepth, false, false);
+#ifdef HELPMATE
+          if (pos.is_helpmate()) value = -value;
+#endif
       }
 
       // Step 17. Undo move
@@ -1462,10 +1491,6 @@ moves_loop: // When in check search starts from here
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
 
-#ifdef HELPMATE
-    if (pos.is_helpmate())
-        return -bestValue;
-#endif
     return bestValue;
   }
 
@@ -1595,6 +1620,9 @@ moves_loop: // When in check search starts from here
 #ifdef GRID
                   && !pos.is_grid()
 #endif
+#ifdef HELPMATE
+                  && !pos.is_helpmate()
+#endif
                   ? pos.check_squares(type_of(pos.moved_piece(move))) & to_sq(move)
                   : pos.gives_check(move);
 
@@ -1664,6 +1692,9 @@ moves_loop: // When in check search starts from here
       pos.do_move(move, st, givesCheck);
       value = givesCheck ? -qsearch<NT,  true>(pos, ss+1, -beta, -alpha, depth - ONE_PLY)
                          : -qsearch<NT, false>(pos, ss+1, -beta, -alpha, depth - ONE_PLY);
+#ifdef HELPMATE
+      if (pos.is_helpmate()) value = -value;
+#endif
       pos.undo_move(move);
 
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
