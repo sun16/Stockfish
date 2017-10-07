@@ -928,6 +928,10 @@ namespace {
         tte->save(posKey, VALUE_NONE, BOUND_NONE, DEPTH_NONE, MOVE_NONE,
                   ss->staticEval, TT.generation());
     }
+#ifdef HELPMATE
+    if (pos.is_helpmate())
+        eval = -eval;
+#endif
 
 #ifdef ANTI
     if (pos.is_anti() && pos.can_capture())
@@ -951,10 +955,21 @@ namespace {
         &&  eval + razor_margin[pos.variant()][depth / ONE_PLY] <= alpha)
     {
         if (depth <= ONE_PLY)
-            return qsearch<NonPV, false>(pos, ss, alpha, alpha+1);
+        {
+            Value v = qsearch<NonPV, false>(pos, ss, alpha, alpha+1);
+#ifdef HELPMATE
+            if (pos.is_helpmate())
+                v = -v;
+#endif
+            return v;
+        }
 
         Value ralpha = alpha - razor_margin[pos.variant()][depth / ONE_PLY];
         Value v = qsearch<NonPV, false>(pos, ss, ralpha, ralpha+1);
+#ifdef HELPMATE
+        if (pos.is_helpmate())
+            v = -v;
+#endif
         if (v <= ralpha)
             return v;
     }
@@ -966,7 +981,13 @@ namespace {
     if (   !rootNode
         &&  depth < 7 * ONE_PLY
         &&  eval - futility_margin(pos.variant(), depth) >= beta
-        &&  eval < VALUE_KNOWN_WIN)  // Do not return unproven wins
+        &&  eval < VALUE_KNOWN_WIN  // Do not return unproven wins
+#ifdef HORDE
+        &&  (pos.is_horde() || pos.non_pawn_material(pos.side_to_move()))
+#else
+        &&  pos.non_pawn_material(pos.side_to_move())
+#endif
+    )
         return eval;
 
     // Step 8. Null move search with verification search (is omitted in PV nodes)
@@ -998,6 +1019,10 @@ namespace {
         pos.do_null_move(st);
         Value nullValue = depth-R < ONE_PLY ? -qsearch<NonPV, false>(pos, ss+1, -beta, -beta+1)
                                             : - search<NonPV>(pos, ss+1, -beta, -beta+1, depth-R, !cutNode, true);
+#ifdef HELPMATE
+        if (pos.is_helpmate())
+            nullValue = -nullValue;
+#endif
         pos.undo_null_move();
 
         if (nullValue >= beta)
@@ -1019,6 +1044,10 @@ namespace {
 
             Value v = depth-R < ONE_PLY ? qsearch<NonPV, false>(pos, ss, beta-1, beta)
                                         :  search<NonPV>(pos, ss, beta-1, beta, depth-R, false, true);
+#ifdef HELPMATE
+            if (pos.is_helpmate())
+                v = -v;
+#endif
             thisThread->pair = pair;
             thisThread->nmp_ply = nmp_ply;
 
@@ -1035,9 +1064,6 @@ namespace {
 #endif
 #ifdef LOSERS
     if (pos.is_losers()) {} else
-#endif
-#ifdef HELPMATE
-    if (pos.is_helpmate()) {} else
 #endif
     if (   !PvNode
         &&  depth >= 5 * ONE_PLY
@@ -1058,6 +1084,10 @@ namespace {
                 assert(depth >= 5 * ONE_PLY);
                 pos.do_move(move, st);
                 value = -search<NonPV>(pos, ss+1, -rbeta, -rbeta+1, depth - 4 * ONE_PLY, !cutNode, false);
+#ifdef HELPMATE
+                if (pos.is_helpmate())
+                    value = -value;
+#endif
                 pos.undo_move(move);
                 if (value >= rbeta)
                     return value;
@@ -1065,6 +1095,9 @@ namespace {
     }
 
     // Step 10. Internal iterative deepening (skipped when in check)
+#ifdef HELPMATE
+    if (pos.is_helpmate()) {} else
+#endif
 #ifdef CRAZYHOUSE
     if (    depth >= (pos.is_house() ? 4 : 6) * ONE_PLY
 #else
@@ -1130,9 +1163,17 @@ moves_loop: // When in check search starts from here
           (ss+1)->pv = nullptr;
 
       extension = DEPTH_ZERO;
+#ifdef HELPMATE
+      if (pos.is_helpmate())
+          captureOrPromotion = (type_of(move) == PROMOTION);
+#endif
       captureOrPromotion = pos.capture_or_promotion(move);
       movedPiece = pos.moved_piece(move);
 
+#ifdef HELPMATE
+      if (pos.is_helpmate())
+          givesCheck = false;
+#endif
       givesCheck =  type_of(move) == NORMAL && !pos.discovered_check_candidates()
 #ifdef ATOMIC
                   && !pos.is_atomic()
@@ -1143,7 +1184,7 @@ moves_loop: // When in check search starts from here
 #ifdef HELPMATE
                   && !pos.is_helpmate()
 #endif
-                  ? pos.check_squares(type_of(movedPiece)) & to_sq(move)
+                  ? pos.check_squares(type_of(pos.piece_on(from_sq(move)))) & to_sq(move)
                   : pos.gives_check(move);
 
       moveCountPruning =   depth < 16 * ONE_PLY
@@ -1203,9 +1244,6 @@ moves_loop: // When in check search starts from here
 #endif
 #ifdef LOSERS
               && (!pos.is_losers() || !(pos.attackers_to(to_sq(move)) & pos.pieces(~pos.side_to_move())))
-#endif
-#ifdef HELPMATE
-              && !pos.is_helpmate()
 #endif
 #ifdef HORDE
               && (pos.is_horde() || !pos.advanced_pawn_push(move) || pos.non_pawn_material() >= Value(5000))
@@ -1337,7 +1375,8 @@ moves_loop: // When in check search starts from here
 
           value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, d, true, false);
 #ifdef HELPMATE
-          if (pos.is_helpmate()) value = -value;
+          if (pos.is_helpmate())
+              value = -value;
 #endif
 
           doFullDepthSearch = (value > alpha && d != newDepth);
@@ -1353,7 +1392,8 @@ moves_loop: // When in check search starts from here
                                        : -qsearch<NonPV, false>(pos, ss+1, -(alpha+1), -alpha)
                                        : - search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth, !cutNode, false);
 #ifdef HELPMATE
-          if (pos.is_helpmate()) value = -value;
+          if (pos.is_helpmate())
+              value = -value;
 #endif
       }
 
@@ -1370,7 +1410,8 @@ moves_loop: // When in check search starts from here
                                        : -qsearch<PV, false>(pos, ss+1, -beta, -alpha)
                                        : - search<PV>(pos, ss+1, -beta, -alpha, newDepth, false, false);
 #ifdef HELPMATE
-          if (pos.is_helpmate()) value = -value;
+          if (pos.is_helpmate())
+              value = -value;
 #endif
       }
 
@@ -1613,6 +1654,10 @@ moves_loop: // When in check search starts from here
     {
       assert(is_ok(move));
 
+#ifdef HELPMATE
+      if (pos.is_helpmate())
+          givesCheck = false;
+#endif
       givesCheck =  type_of(move) == NORMAL && !pos.discovered_check_candidates()
 #ifdef ATOMIC
                   && !pos.is_atomic()
@@ -1623,7 +1668,7 @@ moves_loop: // When in check search starts from here
 #ifdef HELPMATE
                   && !pos.is_helpmate()
 #endif
-                  ? pos.check_squares(type_of(pos.moved_piece(move))) & to_sq(move)
+                  ? pos.check_squares(type_of(pos.piece_on(from_sq(move)))) & to_sq(move)
                   : pos.gives_check(move);
 
       moveCount++;
@@ -1693,7 +1738,8 @@ moves_loop: // When in check search starts from here
       value = givesCheck ? -qsearch<NT,  true>(pos, ss+1, -beta, -alpha, depth - ONE_PLY)
                          : -qsearch<NT, false>(pos, ss+1, -beta, -alpha, depth - ONE_PLY);
 #ifdef HELPMATE
-      if (pos.is_helpmate()) value = -value;
+      if (pos.is_helpmate())
+          value = -value;
 #endif
       pos.undo_move(move);
 
