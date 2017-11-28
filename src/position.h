@@ -233,6 +233,7 @@ public:
 #endif
 #ifdef HELPMATE
   bool is_helpmate() const;
+  bool is_antihelpmate() const;
 #endif
 #ifdef LOSERS
   bool is_losers() const;
@@ -740,6 +741,10 @@ inline bool Position::can_capture() const {
 inline bool Position::is_helpmate() const {
   return var == HELPMATE_VARIANT;
 }
+
+inline bool Position::is_antihelpmate() const {
+  return subvar == ANTIHELPMATE_VARIANT;
+}
 #endif
 
 #ifdef LOSERS
@@ -1060,7 +1065,7 @@ inline Value Position::checkmate_value(int ply) const {
   {
 #ifdef HELPMATE
   case HELPMATE_VARIANT:
-      return sideToMove == (subvar == ANTIHELPMATE_VARIANT ? WHITE : BLACK) ? mate_in(ply) : mated_in(ply);
+      return sideToMove == (is_antihelpmate() ? WHITE : BLACK) ? mate_in(ply) : mated_in(ply);
 #endif
 #ifdef LOSERS
   case LOSERS_VARIANT:
