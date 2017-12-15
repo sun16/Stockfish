@@ -867,7 +867,7 @@ namespace {
         {
             kingAttackersCount[Us]++;
             kingAttackersWeight[Us] += KingAttackWeights[pos.variant()][Pt];
-#ifdef TWOKING
+#ifdef TWOKINGS
             if (pos.is_two_kings() && pos.count<KING>() > 1)
                 kingAdjacentZoneAttacksCount[Us] += popcount(b & pos.attacks_from<KING>(pos.square<KING>(Them)));
             else
