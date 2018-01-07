@@ -23,6 +23,7 @@
 #include <cstring>   // For std::memset
 #include <iomanip>
 #include <sstream>
+#include <iostream>
 
 #include "bitboard.h"
 #include "evaluate.h"
@@ -1661,6 +1662,17 @@ namespace {
     score += evaluate_pieces<WHITE, BISHOP>() - evaluate_pieces<BLACK, BISHOP>();
     score += evaluate_pieces<WHITE, ROOK  >() - evaluate_pieces<BLACK, ROOK  >();
     score += evaluate_pieces<WHITE, QUEEN >() - evaluate_pieces<BLACK, QUEEN >();
+
+#ifdef CRAZYHOUSE
+    if (pos.is_house()) {
+        // std::cout << 10 * popcount(~(attackedBy[BLACK][PAWN] | attackedBy[BLACK][KNIGHT] | attackedBy[BLACK][BISHOP] | attackedBy[BLACK][ROOK] | pos.pieces() | Rank1234BB)) << std::endl;
+        // std::cout << 10 * popcount(~(attackedBy[WHITE][PAWN] | attackedBy[WHITE][KNIGHT] | attackedBy[WHITE][BISHOP] | attackedBy[WHITE][ROOK] | pos.pieces() | Rank5678BB)) << std::endl;
+
+        // Positional bonus for potential drop points - unoccupied squares in enemy territory that are not attacked by enemy non-KQ pieces
+        mobility[WHITE] += make_score(10, 10) * popcount(~(attackedBy[BLACK][PAWN] | attackedBy[BLACK][KNIGHT] | attackedBy[BLACK][BISHOP] | attackedBy[BLACK][ROOK] | pos.pieces() | Rank1234BB));
+        mobility[BLACK] += make_score(10, 10) * popcount(~(attackedBy[WHITE][PAWN] | attackedBy[WHITE][KNIGHT] | attackedBy[WHITE][BISHOP] | attackedBy[WHITE][ROOK] | pos.pieces() | Rank5678BB));
+    }
+#endif
 
     score += mobility[WHITE] - mobility[BLACK];
 
