@@ -528,7 +528,8 @@ namespace {
   const int KingDangerInHand[PIECE_TYPE_NB] = {
     79, 16, 200, 61, 138, 152
   };
-  const Score DropMobilityBonus = S(30, 30);
+  Score DropMobilityBonus = S(30, 30);
+  TUNE(SetRange(10, 100), DropMobilityBonus);
 #endif
 
 #ifdef RACE
