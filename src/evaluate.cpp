@@ -23,6 +23,7 @@
 #include <cstring>   // For std::memset
 #include <iomanip>
 #include <sstream>
+#include <iostream>
 
 #include "bitboard.h"
 #include "evaluate.h"
@@ -846,7 +847,7 @@ namespace {
     while ((s = *pl++) != SQ_NONE)
     {
         // Find attacked squares, including x-ray attacks for bishops and rooks
-        b = Pt == BISHOP ? attacks_bb<BISHOP>(s, pos.pieces() ^ pos.pieces(QUEEN))
+        b = Pt == BISHOP ? attacks_bb<BISHOP>(s, pos.pieces() ^ pos.pieces(QUEEN) ^ pos.pieces(Us, BISHOP))
           : Pt ==   ROOK ? attacks_bb<  ROOK>(s, pos.pieces() ^ pos.pieces(QUEEN) ^ pos.pieces(Us, ROOK))
                          : pos.attacks_from<Pt>(s);
 
@@ -1661,9 +1662,25 @@ namespace {
 
 #ifdef CRAZYHOUSE
     if (pos.is_house()) {
-        // Positional bonus for potential drop points - unoccupied squares in enemy territory that are not attacked by enemy non-KQ pieces
-        mobility[WHITE] += DropMobilityBonus * popcount(~(attackedBy[BLACK][PAWN] | attackedBy[BLACK][KNIGHT] | attackedBy[BLACK][BISHOP] | attackedBy[BLACK][ROOK] | pos.pieces() | Rank1234BB));
-        mobility[BLACK] += DropMobilityBonus * popcount(~(attackedBy[WHITE][PAWN] | attackedBy[WHITE][KNIGHT] | attackedBy[WHITE][BISHOP] | attackedBy[WHITE][ROOK] | pos.pieces() | Rank5678BB));
+        // Positional bonus for potential drop points. Unoccupied squares in enemy territory which:
+        // 1) are controlled no times by enemy pieces (excluding king)
+        // 2) are controlled at least once by a player bishop, knight or pawn, and controlled once by an enemy piece (excluding king)
+
+        // Bitboard attackedBy2Upgraded = attackedBy2[BLACK] | (shift<SOUTH_WEST>(pos.pieces(BLACK, PAWN)) & shift<SOUTH_EAST>(pos.pieces(BLACK, PAWN)));
+        //std::cout << Bitboards::pretty(~attackedBy2Upgraded & (attackedBy[WHITE][PAWN] | attackedBy[WHITE][KNIGHT] | attackedBy[WHITE][BISHOP]) & ~pos.pieces() & Rank5678BB) << std::endl;
+        //std::cout << Bitboards::pretty(pos.pinned_pieces(WHITE) & pos.pieces(WHITE, PAWN)) << std::endl;
+        //if (pos.pinned_pieces(WHITE) & s)
+        //     b &= LineBB[pos.square<KING>(Us)][s];
+
+        mobility[WHITE] += DropMobilityBonus * (
+            popcount(~(attackedBy[BLACK][QUEEN] | attackedBy[BLACK][PAWN] | attackedBy[BLACK][KNIGHT] | attackedBy[BLACK][BISHOP] | attackedBy[BLACK][ROOK] | pos.pieces() | Rank1234BB)) +
+            popcount(~attackedBy2[BLACK] & ~pos.pieces() & Rank5678BB & (attackedBy[WHITE][PAWN] | attackedBy[WHITE][KNIGHT] | attackedBy[WHITE][BISHOP]))
+        );
+        mobility[BLACK] += DropMobilityBonus * (
+            popcount(~(attackedBy[BLACK][QUEEN] | attackedBy[WHITE][PAWN] | attackedBy[WHITE][KNIGHT] | attackedBy[WHITE][BISHOP] | attackedBy[WHITE][ROOK] | pos.pieces() | Rank5678BB)) +
+            popcount(~attackedBy2[WHITE] & ~pos.pieces() & Rank1234BB & (attackedBy[BLACK][PAWN] | attackedBy[BLACK][KNIGHT] | attackedBy[BLACK][BISHOP]))
+        );
+
     }
 #endif
 
