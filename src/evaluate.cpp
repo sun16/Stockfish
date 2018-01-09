@@ -23,6 +23,7 @@
 #include <cstring>   // For std::memset
 #include <iomanip>
 #include <sstream>
+#include <iostream>
 
 #include "bitboard.h"
 #include "evaluate.h"
@@ -754,6 +755,8 @@ namespace {
     const Color     Them = (Us == WHITE ? BLACK : WHITE);
     const Direction Up   = (Us == WHITE ? NORTH : SOUTH);
     const Direction Down = (Us == WHITE ? SOUTH : NORTH);
+    const Direction Left     = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
+    const Direction Right    = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
     const Bitboard LowRanks = (Us == WHITE ? Rank2BB | Rank3BB: Rank7BB | Rank6BB);
 
     // Find our pawns on the first two ranks, and those which are blocked
@@ -792,6 +795,20 @@ namespace {
     else
 #endif
     b = attackedBy[Us][KING] = pos.attacks_from<KING>(pos.square<KING>(Us));
+#ifdef CRAZYHOUSE
+    if (pos.is_house())
+    {
+        Bitboard ourPawns = pos.pieces(Us, PAWN);
+        Bitboard pinnedPawns = ourPawns & pos.pinned_pieces(Us);
+        Bitboard unpinnedPawns = ourPawns & ~pos.pinned_pieces(Us);
+        attackedBy[Us][PAWN] =
+            ((shift<Right>(pinnedPawns) | shift<Left>(pinnedPawns)) & PseudoAttacks[BISHOP][pos.square<KING>(Us)]) |
+            shift<Right>(unpinnedPawns) | shift<Left>(unpinnedPawns);
+        //std::cout << Bitboards::pretty(attackedBy[Us][PAWN]) << std::endl;
+        //std::cout << Bitboards::pretty(pe->pawn_attacks(Us)) << std::endl;
+    }
+    else
+#endif
     attackedBy[Us][PAWN] = pe->pawn_attacks(Us);
 
     attackedBy2[Us]            = b & attackedBy[Us][PAWN];
