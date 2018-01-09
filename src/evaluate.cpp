@@ -1673,11 +1673,11 @@ namespace {
         //     b &= LineBB[pos.square<KING>(Us)][s];
 
         mobility[WHITE] += DropMobilityBonus * (
-            popcount(~(attackedBy[BLACK][QUEEN] | attackedBy[BLACK][PAWN] | attackedBy[BLACK][KNIGHT] | attackedBy[BLACK][BISHOP] | attackedBy[BLACK][ROOK] | pos.pieces() | Rank1234BB)) +
+            popcount(~(attackedBy[BLACK][PAWN] | attackedBy[BLACK][KNIGHT] | attackedBy[BLACK][BISHOP] | attackedBy[BLACK][ROOK] | pos.pieces() | Rank1234BB)) +
             popcount(~attackedBy2[BLACK] & ~pos.pieces() & Rank5678BB & (attackedBy[WHITE][PAWN] | attackedBy[WHITE][KNIGHT] | attackedBy[WHITE][BISHOP]))
         );
         mobility[BLACK] += DropMobilityBonus * (
-            popcount(~(attackedBy[BLACK][QUEEN] | attackedBy[WHITE][PAWN] | attackedBy[WHITE][KNIGHT] | attackedBy[WHITE][BISHOP] | attackedBy[WHITE][ROOK] | pos.pieces() | Rank5678BB)) +
+            popcount(~(attackedBy[WHITE][PAWN] | attackedBy[WHITE][KNIGHT] | attackedBy[WHITE][BISHOP] | attackedBy[WHITE][ROOK] | pos.pieces() | Rank5678BB)) +
             popcount(~attackedBy2[WHITE] & ~pos.pieces() & Rank1234BB & (attackedBy[BLACK][PAWN] | attackedBy[BLACK][KNIGHT] | attackedBy[BLACK][BISHOP]))
         );
 
